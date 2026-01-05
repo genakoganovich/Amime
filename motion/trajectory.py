@@ -69,25 +69,26 @@ def interpolate_orientation(points: np.ndarray) -> np.ndarray:
     return directions
 
 
-def interpolate_orientation_by_length(trajectory, directions, s):
+
+def interpolate_orientation_by_length(cum_lengths, directions, s):
     """
-    trajectory: Nx3 массив точек
-    directions: Nx3 массив направлений между точками
+    cum_lengths: (N,) накопленные длины
+    directions: (N,3) направления (из interpolate_orientation)
     s: длина вдоль траектории
     """
-    cum_lengths = cumulative_lengths(trajectory)
 
-    # если s <= 0
     if s <= 0:
         return directions[0]
-    # если s >= total_length
+
     if s >= cum_lengths[-1]:
         return directions[-1]
 
-    # находим сегмент, в котором находится s
     idx = np.searchsorted(cum_lengths, s) - 1
-    idx = max(0, min(idx, len(directions) - 2))
+    idx = np.clip(idx, 0, len(directions) - 2)
 
+    # параметр внутри сегмента
     t = (s - cum_lengths[idx]) / (cum_lengths[idx + 1] - cum_lengths[idx])
 
-    return (1 - t) * directions[idx] + t * directions[idx + 1]
+    # 🔥 ВОТ ГЛАВНОЕ ОТЛИЧИЕ
+    d = (1 - t) * directions[idx] + t * directions[idx + 1]
+    return d / np.linalg.norm(d)
