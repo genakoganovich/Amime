@@ -1,4 +1,4 @@
-from motion.kinematic_visualizer import KinematicVisualizer
+from motion.kinematic_visualizer_optimized import KinematicVisualizerOptimized
 import numpy as np
 
 points = np.array([
@@ -11,5 +11,4 @@ points = np.array([
     [6, -0.8, 0],
 ])
 
-vis = KinematicVisualizer(points)
-vis.run()
+vis = KinematicVisualizerOptimized(points)
