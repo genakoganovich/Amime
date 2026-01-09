@@ -11,22 +11,14 @@ from motion.trajectory import (
     interpolate_orientation_by_length,
 )
 
-# -------------------------
-# Траектория
-# -------------------------
-TRAJECTORY = np.array([
-    [0, 0, 0],
-    [0.5, 0, 0],
-    [2, 0, 0],
-    [2, 1, 0],
-    [3, 1, 0],
-    [3, 3, 0],
-])
+from motion.constants import (
+    TRAJECTORY,
+    ARROW_SCALE,
+    SPHERE_RADIUS,
+    STEPS,
+    FRAME_DELAY,
+    )
 
-ARROW_SCALE = 0.3
-SPHERE_RADIUS = 0.12
-STEPS = 150
-FRAME_DELAY = 0.03
 
 # -------------------------
 # Данные
