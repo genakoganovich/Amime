@@ -1,6 +1,7 @@
 import pyvista as pv
 from dataclasses import dataclass
 from typing import List, Dict, Any
+from motion.mesh_factory import MeshFactory
 
 
 @dataclass
@@ -22,14 +23,18 @@ class ActorConfig:
 class TrajectoryVisualizer:
     """Чистая визуализация - получает данные извне"""
 
-    def __init__(self, trajectory, global_config: Dict[str, Any]):
+    def __init__(self, trajectory, global_config: Dict[str, Any],
+                 mesh_factory: MeshFactory = None):
         """
         Args:
             trajectory: траектория для отрисовки
             global_config: глобальные параметры (радиус, масштаб и т.д.)
+            mesh_factory: фабрика для создания mesh объектов (опционально)
         """
         self.trajectory = trajectory
         self.global_config = global_config
+        self.mesh_factory = mesh_factory or MeshFactory()
+
         self.plotter = pv.Plotter()
         self._setup_scene()
 
@@ -44,18 +49,6 @@ class TrajectoryVisualizer:
             line_width=3
         )
 
-    def _create_mesh(self, mesh_type: str, params: Dict[str, Any]) -> pv.DataObject:
-        """Фабрика для создания mesh объектов"""
-        if mesh_type == "sphere":
-            return pv.Sphere(radius=params.get("radius", 0.1))
-        elif mesh_type == "arrow":
-            return pv.Arrow(
-                direction=params.get("direction", (1, 0, 0)),
-                scale=params.get("scale", 1.0)
-            )
-        else:
-            raise ValueError(f"Unknown mesh type: {mesh_type}")
-
     def add_actor_group(self, group_name: str, configs: List[ActorConfig]):
         """
         Добавить группу объектов на сцену
@@ -67,7 +60,8 @@ class TrajectoryVisualizer:
         self.actors[group_name] = {}
 
         for config in configs:
-            mesh = self._create_mesh(config.mesh_type, config.mesh_params)
+            # Используем фабрику для создания mesh
+            mesh = self.mesh_factory.create(config.mesh_type, config.mesh_params)
             actor = self.plotter.add_mesh(mesh, color=config.color)
 
             self.actors[group_name][config.name] = MeshActor(actor, config.color)

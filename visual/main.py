@@ -7,7 +7,13 @@ from motion.constants import (
     FRAME_DELAY,
 )
 from motion.animation_math import TrajectoryAnimator
-from motion.visualization import TrajectoryVisualizer, ActorConfig
+from motion.visualization import TrajectoryVisualizer
+from motion.mesh_factory import MeshFactory
+from motion.actor_configuration import (
+    DefaultActorConfiguration,
+    ActorConfigurationBuilder,
+    ActorConfigFactory,
+)
 
 
 def main():
@@ -18,47 +24,25 @@ def main():
         "sphere_radius": SPHERE_RADIUS,
         "arrow_scale": ARROW_SCALE,
     }
-    visualizer = TrajectoryVisualizer(TRAJECTORY, global_config)
+
+    # Создаем фабрику для mesh
+    mesh_factory = MeshFactory()
+
+    # Создаем визуализатор
+    visualizer = TrajectoryVisualizer(TRAJECTORY, global_config, mesh_factory)
 
     # ========================================
-    # КОНФИГУРАЦИЯ ОБЪЕКТОВ (определяется снаружи!)
+    # КОНФИГУРАЦИЯ ОБЪЕКТОВ
     # ========================================
 
-    # Метод 1: интерполяция по параметру
-    method_1_actors = [
-        ActorConfig(
-            name="sphere",
-            color="red",
-            mesh_type="sphere",
-            mesh_params={"radius": SPHERE_RADIUS}
-        ),
-        ActorConfig(
-            name="arrow",
-            color="red",
-            mesh_type="arrow",
-            mesh_params={"direction": (1, 0, 0), "scale": ARROW_SCALE}
-        ),
-    ]
-    visualizer.add_actor_group("method_1", method_1_actors)
-
-    # Метод 2: интерполяция по длине дуги
-    method_2_actors = [
-        ActorConfig(
-            name="sphere",
-            color="cyan",
-            mesh_type="sphere",
-            mesh_params={"radius": SPHERE_RADIUS}
-        ),
-        ActorConfig(
-            name="arrow",
-            color="cyan",
-            mesh_type="arrow",
-            mesh_params={"direction": (1, 0, 0), "scale": ARROW_SCALE}
-        ),
-    ]
-    visualizer.add_actor_group("method_2", method_2_actors)
+    # дефолтная конфигурация
+    actor_config = DefaultActorConfiguration(global_config)
 
     # ========================================
+
+    # Добавляем все группы на сцену
+    for group_name, group_config in actor_config.get_all_groups().items():
+        visualizer.add_actor_group(group_name, group_config.actors)
 
     visualizer.show()
 
@@ -73,11 +57,11 @@ def main():
                 state_2 = animator.get_state_by_length(t)
 
                 # Отрисовать оба метода
-                visualizer.update_actor_state("method_1", "sphere", state_1)
-                visualizer.update_actor_state("method_1", "arrow", state_1)
+                visualizer.update_actor_state("method_1", "method_1_sphere", state_1)
+                visualizer.update_actor_state("method_1", "method_1_arrow", state_1)
 
-                visualizer.update_actor_state("method_2", "sphere", state_2)
-                visualizer.update_actor_state("method_2", "arrow", state_2)
+                visualizer.update_actor_state("method_2", "method_2_sphere", state_2)
+                visualizer.update_actor_state("method_2", "method_2_arrow", state_2)
 
                 visualizer.update()
                 time.sleep(FRAME_DELAY)
