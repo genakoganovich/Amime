@@ -71,15 +71,7 @@ class TrajectoryVisualizer:
             visual = self.plotter.add_mesh(mesh, color=config.color)
 
             self.visuals[config.name] = MeshActor(visual, config.color)
-            self.visual_to_actor[config.name] = actor_name
 
-    def register_state_provider(self, actor_name: str,
-                               provider: Callable[[], ActorState]):
-        """
-        Зарегистрировать провайдер для актора
-        actor_name нужно только для связи провайдера с визуалами
-        """
-        self.state_providers.append((actor_name, provider))
 
     def add_actor_with_provider(self, actor_name: str,
                                 visual_configs: List[ActorConfig],
