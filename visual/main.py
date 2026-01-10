@@ -7,12 +7,9 @@ from motion.constants import (
     FRAME_DELAY,
 )
 from motion.animation_math import TrajectoryAnimator
-from motion.visualization import TrajectoryVisualizer
+from motion.visualization import TrajectoryVisualizer, ActorState
 from motion.mesh_factory import MeshFactory
-from motion.actor_configuration import (
-    DefaultActorConfiguration,
-    ActorConfigurationBuilder,
-)
+from motion.actor_configuration import ActorConfigurationBuilder
 
 
 def main():
@@ -28,12 +25,7 @@ def main():
     visualizer = TrajectoryVisualizer(TRAJECTORY, global_config, mesh_factory)
 
     # ========================================
-    # ВАРИАНТ 1: Дефолтная конфигурация
-    # ========================================
-    # actor_config = DefaultActorConfiguration(global_config)
-
-    # ========================================
-    # ВАРИАНТ 2: Кастомная конфигурация - разделенные сфера и стрелка
+    # КОНФИГУРАЦИЯ ОБЪЕКТОВ
     # ========================================
     actor_config = ActorConfigurationBuilder(global_config)
 
@@ -65,58 +57,75 @@ def main():
         color="cyan"
     )
 
-    # ========================================
-    # ВАРИАНТ 3: Комбинированный подход
-    # ========================================
-    # actor_config = ActorConfigurationBuilder(global_config)
-    #
-    # # Метод 1: сфера + стрелка вместе
-    # actor_config.add_sphere_and_arrow_group("method_1", color="red")
-    #
-    # # Метод 2: только сфера
-    # actor_config.add_sphere_group(
-    #     group_name="method_2",
-    #     actor_name="sphere",
-    #     color="cyan"
-    # )
-    #
-    # # Метод 3: кастомные размеры
-    # actor_config.add_sphere_group(
-    #     group_name="method_3",
-    #     actor_name="big_sphere",
-    #     color="green",
-    #     radius=0.15
-    # )
-
-    # ========================================
-
     # Добавляем все группы на сцену
     for group_name, group_config in actor_config.get_all_groups().items():
         visualizer.add_actor_group(group_name, group_config.actors)
 
+    # ========================================
+    # РЕГИСТРАЦИЯ ПРОВАЙДЕРОВ СОСТОЯНИЯ
+    # ========================================
+
+    # Метод 1
+    visualizer.register_state_provider(
+        "method_1_sphere", "sphere",
+        lambda: ActorState(
+            position=animator.get_state_by_parameter(_current_t.value)["position"],
+            yaw=animator.get_state_by_parameter(_current_t.value)["yaw"]
+        )
+    )
+
+    visualizer.register_state_provider(
+        "method_1_arrow", "arrow",
+        lambda: ActorState(
+            position=animator.get_state_by_parameter(_current_t.value)["position"],
+            yaw=animator.get_state_by_parameter(_current_t.value)["yaw"]
+        )
+    )
+
+    # Метод 2
+    visualizer.register_state_provider(
+        "method_2_sphere", "sphere",
+        lambda: ActorState(
+            position=animator.get_state_by_length(_current_t.value)["position"],
+            yaw=animator.get_state_by_length(_current_t.value)["yaw"]
+        )
+    )
+
+    visualizer.register_state_provider(
+        "method_2_arrow", "arrow",
+        lambda: ActorState(
+            position=animator.get_state_by_length(_current_t.value)["position"],
+            yaw=animator.get_state_by_length(_current_t.value)["yaw"]
+        )
+    )
+
     visualizer.show()
 
-    # Главный цикл анимации
+    # ========================================
+    # ГЛАВНЫЙ ЦИКЛ АНИМАЦИИ
+    # ========================================
     try:
         while True:
             for i in range(STEPS):
-                t = i / (STEPS - 1)
+                _current_t.value = i / (STEPS - 1)
 
-                state_1 = animator.get_state_by_parameter(t)
-                state_2 = animator.get_state_by_length(t)
-
-                # Вариант 2: разделенные группы
-                visualizer.update_actor_state("method_1_sphere", "sphere", state_1)
-                visualizer.update_actor_state("method_1_arrow", "arrow", state_1)
-
-                visualizer.update_actor_state("method_2_sphere", "sphere", state_2)
-                visualizer.update_actor_state("method_2_arrow", "arrow", state_2)
-
+                # Единственный вызов - обновить все акторы
+                visualizer.update_all_actors()
                 visualizer.update()
+
                 time.sleep(FRAME_DELAY)
     except KeyboardInterrupt:
         print("Animation stopped")
 
+
+class _CurrentT:
+    """Хранилище текущего времени для лямбд"""
+
+    def __init__(self):
+        self.value = 0.0
+
+
+_current_t = _CurrentT()
 
 if __name__ == "__main__":
     main()
