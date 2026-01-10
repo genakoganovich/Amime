@@ -1,24 +1,39 @@
 import pyvista as pv
-import numpy as np
 from dataclasses import dataclass
+from typing import List, Dict, Any
 
 
 @dataclass
 class MeshActor:
-    """Обертка над PyVista mesh для удобства"""
+    """Обертка над PyVista mesh"""
     mesh: pv.Actor
     color: str
 
 
-class TrajectoryVisualizer:
-    """Управление сценой и отрисовкой"""
+@dataclass
+class ActorConfig:
+    """Конфиг для одного объекта на сцене"""
+    name: str
+    color: str
+    mesh_type: str  # "sphere", "arrow", etc.
+    mesh_params: Dict[str, Any]  # {"radius": 0.1} или {"scale": 1.0}
 
-    def __init__(self, trajectory, config):
+
+class TrajectoryVisualizer:
+    """Чистая визуализация - получает данные извне"""
+
+    def __init__(self, trajectory, global_config: Dict[str, Any]):
+        """
+        Args:
+            trajectory: траектория для отрисовки
+            global_config: глобальные параметры (радиус, масштаб и т.д.)
+        """
         self.trajectory = trajectory
-        self.config = config
+        self.global_config = global_config
         self.plotter = pv.Plotter()
         self._setup_scene()
-        self._create_actors()
+
+        self.actors: Dict[str, Dict[str, MeshActor]] = {}
 
     def _setup_scene(self):
         """Инициализация сцены"""
@@ -29,52 +44,48 @@ class TrajectoryVisualizer:
             line_width=3
         )
 
-    def _create_actors(self):
-        """Создание объектов сцены"""
-        radius = self.config["sphere_radius"]
-        scale = self.config["arrow_scale"]
-
-        # Метод 1: по параметру
-        self.actor_seg = {
-            "sphere": MeshActor(
-                self.plotter.add_mesh(
-                    pv.Sphere(radius=radius),
-                    color="red"
-                ),
-                "red"
-            ),
-            "arrow": MeshActor(
-                self.plotter.add_mesh(
-                    pv.Arrow(direction=(1, 0, 0), scale=scale),
-                    color="red"
-                ),
-                "red"
+    def _create_mesh(self, mesh_type: str, params: Dict[str, Any]) -> pv.DataObject:
+        """Фабрика для создания mesh объектов"""
+        if mesh_type == "sphere":
+            return pv.Sphere(radius=params.get("radius", 0.1))
+        elif mesh_type == "arrow":
+            return pv.Arrow(
+                direction=params.get("direction", (1, 0, 0)),
+                scale=params.get("scale", 1.0)
             )
-        }
+        else:
+            raise ValueError(f"Unknown mesh type: {mesh_type}")
 
-        # Метод 2: по длине дуги
-        self.actor_len = {
-            "sphere": MeshActor(
-                self.plotter.add_mesh(
-                    pv.Sphere(radius=radius),
-                    color="cyan"
-                ),
-                "cyan"
-            ),
-            "arrow": MeshActor(
-                self.plotter.add_mesh(
-                    pv.Arrow(direction=(1, 0, 0), scale=scale),
-                    color="cyan"
-                ),
-                "cyan"
-            )
-        }
+    def add_actor_group(self, group_name: str, configs: List[ActorConfig]):
+        """
+        Добавить группу объектов на сцену
 
-    def update_actor(self, actors: dict, state: dict):
-        """Обновить положение и ориентацию объекта"""
-        actors["sphere"].mesh.SetPosition(state["position"])
-        actors["arrow"].mesh.SetPosition(state["position"])
-        actors["arrow"].mesh.SetOrientation(0, 0, state["yaw"])
+        Args:
+            group_name: название группы (например, "method_1", "method_2")
+            configs: список ActorConfig для объектов в группе
+        """
+        self.actors[group_name] = {}
+
+        for config in configs:
+            mesh = self._create_mesh(config.mesh_type, config.mesh_params)
+            actor = self.plotter.add_mesh(mesh, color=config.color)
+
+            self.actors[group_name][config.name] = MeshActor(actor, config.color)
+
+    def update_actor_position(self, group_name: str, actor_name: str, position):
+        """Обновить позицию объекта"""
+        actor = self.actors[group_name][actor_name].mesh
+        actor.SetPosition(position)
+
+    def update_actor_orientation(self, group_name: str, actor_name: str, yaw: float):
+        """Обновить ориентацию объекта"""
+        actor = self.actors[group_name][actor_name].mesh
+        actor.SetOrientation(0, 0, yaw)
+
+    def update_actor_state(self, group_name: str, actor_name: str, state: Dict[str, Any]):
+        """Обновить состояние объекта (позиция + ориентация)"""
+        self.update_actor_position(group_name, actor_name, state["position"])
+        self.update_actor_orientation(group_name, actor_name, state["yaw"])
 
     def show(self):
         """Запустить интерактивную сцену"""
@@ -83,9 +94,3 @@ class TrajectoryVisualizer:
     def update(self):
         """Обновить кадр"""
         self.plotter.update()
-
-    def render_frame(self, state_seg: dict, state_len: dict):
-        """Отрисовать один кадр с двумя состояниями"""
-        self.update_actor(self.actor_seg, state_seg)
-        self.update_actor(self.actor_len, state_len)
-        self.update()
