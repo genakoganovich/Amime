@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 from motion.constants import (
     TRAJECTORY,
     ARROW_SCALE,
@@ -11,24 +12,17 @@ from motion.visualization import TrajectoryVisualizer, ActorState
 from motion.mesh_factory import MeshFactory
 from motion.actor_configuration import DefaultActorConfiguration
 
-
-class CurrentT:
-    """Хранилище текущего времени"""
-
-    def __init__(self):
-        self.value = 0.0
-
+@dataclass
+class ActorAnimationConfig:
+    """Конфиг актора для анимации"""
+    actor_name: str
+    method: str  # "parameter" или "length"
 
 def main():
-    # Создаем локально
-    current_t = CurrentT()
+    current_t = {"value": 0.0}
 
     animator = TrajectoryAnimator(TRAJECTORY)
-
-    global_config = {
-        "sphere_radius": SPHERE_RADIUS,
-        "arrow_scale": ARROW_SCALE,
-    }
+    global_config = {"sphere_radius": SPHERE_RADIUS, "arrow_scale": ARROW_SCALE}
 
     mesh_factory = MeshFactory()
     visualizer = TrajectoryVisualizer(TRAJECTORY, global_config, mesh_factory)
@@ -38,55 +32,47 @@ def main():
     # ========================================
     actor_config = DefaultActorConfiguration(global_config)
 
-    for actor_name, actor_cfg in actor_config.get_all_actors().items():
-        visualizer.add_actor(actor_cfg)
+    # Конфигурация анимации
+    animation_configs = {
+        "method_1": "parameter",
+        "method_2": "length",
+    }
 
     # ========================================
-    # РЕГИСТРАЦИЯ ПРОВАЙДЕРОВ СОСТОЯНИЯ
+    # Создание провайдеров
     # ========================================
+    def make_provider(method):
+        def provider():
+            if method == "parameter":
+                state = animator.get_state_by_parameter(current_t["value"])
+            else:
+                state = animator.get_state_by_length(current_t["value"])
 
-    # Используем current_t из локальной области
-    visualizer.register_state_provider(
-        "method_1_sphere",
-        lambda: ActorState(
-            position=animator.get_state_by_parameter(current_t.value)["position"],
-            yaw=animator.get_state_by_parameter(current_t.value)["yaw"]
-        )
-    )
+            return ActorState(
+                position=state["position"],
+                yaw=state["yaw"]
+            )
 
-    visualizer.register_state_provider(
-        "method_1_arrow",
-        lambda: ActorState(
-            position=animator.get_state_by_parameter(current_t.value)["position"],
-            yaw=animator.get_state_by_parameter(current_t.value)["yaw"]
-        )
-    )
+        return provider
 
-    visualizer.register_state_provider(
-        "method_2_sphere",
-        lambda: ActorState(
-            position=animator.get_state_by_length(current_t.value)["position"],
-            yaw=animator.get_state_by_length(current_t.value)["yaw"]
-        )
-    )
+    # ========================================
+    # Добавляем акторов со своими провайдерами
+    # ========================================
+    for actor_name, actor in actor_config.get_all_actors().items():
+        method = animation_configs[actor_name]
 
-    visualizer.register_state_provider(
-        "method_2_arrow",
-        lambda: ActorState(
-            position=animator.get_state_by_length(current_t.value)["position"],
-            yaw=animator.get_state_by_length(current_t.value)["yaw"]
+        visualizer.add_actor_with_provider(
+            actor_name,
+            actor.visuals,
+            make_provider(method)
         )
-    )
 
     visualizer.show()
 
-    # ========================================
-    # ГЛАВНЫЙ ЦИКЛ АНИМАЦИИ
-    # ========================================
     try:
         while True:
             for i in range(STEPS):
-                current_t.value = i / (STEPS - 1)
+                current_t["value"] = i / (STEPS - 1)
                 visualizer.update_all_actors()
                 visualizer.update()
                 time.sleep(FRAME_DELAY)

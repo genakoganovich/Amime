@@ -1,19 +1,19 @@
 import pyvista as pv
 from dataclasses import dataclass
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, List
 from motion.mesh_factory import MeshFactory
 
 
 @dataclass
 class MeshActor:
-    """Обертка над PyVista mesh"""
+    """Визуальный элемент на сцене"""
     mesh: pv.Actor
     color: str
 
 
 @dataclass
 class ActorConfig:
-    """Конфиг для одного объекта на сцене"""
+    """Конфиг для одного визуального элемента"""
     name: str
     color: str
     mesh_type: str
@@ -22,13 +22,19 @@ class ActorConfig:
 
 @dataclass
 class ActorState:
-    """Состояние актора (позиция + ориентация)"""
+    """Состояние актора"""
     position: tuple
     yaw: float
 
+@dataclass
+class ActorVisuals:
+    """Визуалы актора + его провайдер состояния"""
+    name: str
+    visuals: List[str]  # имена визуальных элементов
+    state_provider: Callable[[], ActorState]
 
 class TrajectoryVisualizer:
-    """Чистая визуализация - получает данные извне"""
+    """Визуализация траектории"""
 
     def __init__(self, trajectory, global_config: Dict[str, Any],
                  mesh_factory: MeshFactory = None):
@@ -39,12 +45,15 @@ class TrajectoryVisualizer:
         self.plotter = pv.Plotter()
         self._setup_scene()
 
-        # Теперь это словарь акторов, а не групп
-        self.actors: Dict[str, MeshActor] = {}
+        # Визуальные элементы на сцене (sphere, arrow и т.д.)
+        self.visuals: Dict[str, MeshActor] = {}
+        self.actors: Dict[str, ActorVisuals] = {}  # actor_name -> визуалы + провайдер
 
-        # Словарь для сохранения функций-провайдеров состояния
-        # ключ: actor_name, значение: callable() -> ActorState
-        self.state_providers: Dict[str, Callable[[], ActorState]] = {}
+        # Вместо state_providers по имени актора,
+        # используем список провайдеров
+        self.state_providers: List[tuple] = []  # (actor_name, provider)
+
+
 
     def _setup_scene(self):
         """Инициализация сцены"""
@@ -55,42 +64,54 @@ class TrajectoryVisualizer:
             line_width=3
         )
 
-    def add_actor(self, config: ActorConfig):
-        """
-        Добавить одного актора на сцену
+    def add_actor(self, actor_name: str, visual_configs: List[ActorConfig]):
+        """Добавить актора на сцену"""
+        for config in visual_configs:
+            mesh = self.mesh_factory.create(config.mesh_type, config.mesh_params)
+            visual = self.plotter.add_mesh(mesh, color=config.color)
 
-        Args:
-            config: конфиг актора (ActorConfig)
-        """
-        mesh = self.mesh_factory.create(config.mesh_type, config.mesh_params)
-        actor = self.plotter.add_mesh(mesh, color=config.color)
-        self.actors[config.name] = MeshActor(actor, config.color)
+            self.visuals[config.name] = MeshActor(visual, config.color)
+            self.visual_to_actor[config.name] = actor_name
 
     def register_state_provider(self, actor_name: str,
-                                provider: Callable[[], ActorState]):
+                               provider: Callable[[], ActorState]):
         """
-        Зарегистрировать функцию-провайдер состояния для актора
-
-        Args:
-            actor_name: имя актора
-            provider: функция которая возвращает ActorState
+        Зарегистрировать провайдер для актора
+        actor_name нужно только для связи провайдера с визуалами
         """
-        self.state_providers[actor_name] = provider
+        self.state_providers.append((actor_name, provider))
 
-    def update_actor_state(self, actor_name: str, state: ActorState):
-        """Обновить состояние актора"""
-        actor = self.actors[actor_name].mesh
-        actor.SetPosition(state.position)
-        actor.SetOrientation(0, 0, state.yaw)
+    def add_actor_with_provider(self, actor_name: str,
+                                visual_configs: List[ActorConfig],
+                                state_provider: Callable[[], ActorState]):
+        """
+        Добавить актора с его визуалами и провайдером состояния
+        """
+        visual_names = []
+
+        for config in visual_configs:
+            mesh = self.mesh_factory.create(config.mesh_type, config.mesh_params)
+            visual = self.plotter.add_mesh(mesh, color=config.color)
+
+            self.visuals[config.name] = MeshActor(visual, config.color)
+            visual_names.append(config.name)
+
+        self.actors[actor_name] = ActorVisuals(
+            name=actor_name,
+            visuals=visual_names,
+            state_provider=state_provider
+        )
 
     def update_all_actors(self):
-        """
-        Обновить состояние всех зарегистрированных акторов
-        Берет состояние от провайдеров
-        """
-        for actor_name, provider in self.state_providers.items():
-            state = provider()
-            self.update_actor_state(actor_name, state)
+        """Обновить состояние всех акторов"""
+        for actor in self.actors.values():
+            state = actor.state_provider()
+
+            # Обновляем все визуалы этого актора
+            for visual_name in actor.visuals:
+                visual = self.visuals[visual_name].mesh
+                visual.SetPosition(state.position)
+                visual.SetOrientation(0, 0, state.yaw)
 
     def show(self):
         """Запустить интерактивную сцену"""

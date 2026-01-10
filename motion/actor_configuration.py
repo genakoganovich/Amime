@@ -4,98 +4,103 @@ from motion.visualization import ActorConfig
 
 
 @dataclass
-class ActorGroupConfig:
-    """Конфиг группы объектов"""
+class Actor:
+    """Логический актор с его визуальным представлением"""
     name: str
-    actors: List[ActorConfig]
+    visuals: List[ActorConfig]  # может быть несколько визуальных элементов
 
 
 class ActorConfigFactory:
-    """Фабрика для создания конфигов отдельных объектов"""
+    """Фабрика для создания конфигов актора"""
 
     def __init__(self, global_params: Dict):
         self.global_params = global_params
 
-    def create_sphere(self, actor_name: str, color: str, **kwargs) -> ActorConfig:
+    def create_sphere_config(self, name: str, color: str, **kwargs) -> ActorConfig:
         """Создать конфиг сферы"""
         radius = kwargs.get("radius", self.global_params.get("sphere_radius", 0.1))
 
         return ActorConfig(
-            name=actor_name,
+            name=f"{name}_sphere",
             color=color,
             mesh_type="sphere",
-            mesh_params={
-                "radius": radius,
-                "theta_resolution": kwargs.get("theta_resolution", 10),
-                "phi_resolution": kwargs.get("phi_resolution", 10),
-            }
+            mesh_params={"radius": radius}
         )
 
-    def create_arrow(self, actor_name: str, color: str, **kwargs) -> ActorConfig:
+    def create_arrow_config(self, name: str, color: str, **kwargs) -> ActorConfig:
         """Создать конфиг стрелки"""
         arrow_scale = kwargs.get("scale", self.global_params.get("arrow_scale", 1.0))
 
         return ActorConfig(
-            name=actor_name,
+            name=f"{name}_arrow",
             color=color,
             mesh_type="arrow",
-            mesh_params={
-                "direction": kwargs.get("direction", (1, 0, 0)),
-                "scale": arrow_scale,
-            }
+            mesh_params={"direction": (1, 0, 0), "scale": arrow_scale}
         )
 
 
 class ActorConfigurationBuilder:
-    """Построитель конфигурации объектов на сцене"""
+    """Построитель конфигурации акторов"""
 
     def __init__(self, global_params: Dict):
         self.global_params = global_params
         self.factory = ActorConfigFactory(global_params)
-        # Теперь это словарь акторов, не групп!
-        self.actors: Dict[str, ActorConfig] = {}
+        self.actors: Dict[str, Actor] = {}
 
-    def add_sphere(self, actor_name: str, color: str, **kwargs) -> "ActorConfigurationBuilder":
+    def add_actor(self, actor_name: str, visuals: List[ActorConfig]) -> "ActorConfigurationBuilder":
         """
-        Добавить одну сферу
+        Добавить актора с его визуальным представлением
 
         Args:
-            actor_name: имя актора (уникальное)
-            color: цвет
-            **kwargs: доп. параметры (radius, etc.)
+            actor_name: имя актора
+            visuals: список визуальных элементов (ActorConfig)
 
         Returns:
             self для chaining
         """
-        self.actors[actor_name] = self.factory.create_sphere(actor_name, color, **kwargs)
+        self.actors[actor_name] = Actor(name=actor_name, visuals=visuals)
         return self
 
-    def add_arrow(self, actor_name: str, color: str, **kwargs) -> "ActorConfigurationBuilder":
+    def add_actor_with_sphere_and_arrow(self, actor_name: str, color: str,
+                                        **kwargs) -> "ActorConfigurationBuilder":
         """
-        Добавить одну стрелку
+        Добавить актора со сферой и стрелкой
 
         Args:
-            actor_name: имя актора (уникальное)
+            actor_name: имя актора
             color: цвет
-            **kwargs: доп. параметры (scale, direction, etc.)
+            **kwargs: доп. параметры
 
         Returns:
             self для chaining
         """
-        self.actors[actor_name] = self.factory.create_arrow(actor_name, color, **kwargs)
-        return self
+        sphere = self.factory.create_sphere_config(actor_name, color, **kwargs)
+        arrow = self.factory.create_arrow_config(actor_name, color, **kwargs)
+        return self.add_actor(actor_name, [sphere, arrow])
 
-    def get_all_actors(self) -> Dict[str, ActorConfig]:
-        """Получить все акторы"""
+    def add_actor_with_sphere_only(self, actor_name: str, color: str,
+                                   **kwargs) -> "ActorConfigurationBuilder":
+        """Добавить актора только со сферой"""
+        sphere = self.factory.create_sphere_config(actor_name, color, **kwargs)
+        return self.add_actor(actor_name, [sphere])
+
+    def add_actor_with_arrow_only(self, actor_name: str, color: str,
+                                  **kwargs) -> "ActorConfigurationBuilder":
+        """Добавить актора только со стрелкой"""
+        arrow = self.factory.create_arrow_config(actor_name, color, **kwargs)
+        return self.add_actor(actor_name, [arrow])
+
+    def get_all_actors(self) -> Dict[str, Actor]:
+        """Получить всех акторов"""
         return self.actors
 
-    def get_actor(self, actor_name: str) -> ActorConfig:
-        """Получить один актор"""
+    def get_actor(self, actor_name: str) -> Actor:
+        """Получить одного актора"""
         return self.actors[actor_name]
 
 
 class DefaultActorConfiguration(ActorConfigurationBuilder):
-    """Дефолтная конфигурация - два метода интерполяции"""
+    """Дефолтная конфигурация - два актора"""
 
     def __init__(self, global_params: Dict):
         super().__init__(global_params)
@@ -103,10 +108,8 @@ class DefaultActorConfiguration(ActorConfigurationBuilder):
 
     def _setup_default_config(self):
         """Настроить дефолтную конфигурацию"""
-        # Метод 1: интерполяция по параметру
-        self.add_sphere("method_1_sphere", color="red")
-        self.add_arrow("method_1_arrow", color="red")
+        # Актор 1: интерполяция по параметру (со сферой и стрелкой)
+        self.add_actor_with_sphere_and_arrow("method_1", color="red")
 
-        # Метод 2: интерполяция по длине дуги
-        self.add_sphere("method_2_sphere", color="cyan")
-        self.add_arrow("method_2_arrow", color="cyan")
+        # Актор 2: интерполяция по длине дуги (со сферой и стрелкой)
+        self.add_actor_with_sphere_and_arrow("method_2", color="cyan")
