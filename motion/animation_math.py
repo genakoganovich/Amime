@@ -7,7 +7,7 @@ from motion.trajectory import (
     interpolate_orientation,
     interpolate_orientation_by_length,
 )
-
+from motion.kinematics import tangent_velocity  # ← ДОБАВИТЬ ИМПОРТ
 
 class TrajectoryAnimator:
     """Вычисление состояния объекта в момент времени анимации"""

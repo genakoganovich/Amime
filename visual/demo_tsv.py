@@ -26,7 +26,7 @@ def main():
     # ========================================
 
     actor_config, animation_config = ActorLoader.load_from_csv(
-        "actors_config.tsv",
+        "../data/actors_config.tsv",
         global_config
     )
 

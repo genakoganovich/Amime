@@ -1,4 +1,3 @@
-from pathlib import Path
 from motion.constants import (
     TRAJECTORY,
     ARROW_SCALE,
@@ -9,27 +8,19 @@ from motion.animation_loop import AnimationLoop
 
 
 def main():
+    # Инициализация
     global_config = {
         "sphere_radius": SPHERE_RADIUS,
         "arrow_scale": ARROW_SCALE,
     }
 
-    # Получить путь к корню проекта относительно этого файла
-    project_root = Path(__file__).parent.parent
-    config_path = project_root / "data" / "actors_config_kinematics.json"
-
-    setup = AnimationSetup(
-        TRAJECTORY,
-        global_config,
-        str(config_path),
-        use_kinematics=False  # ← Оставляем False
-    )
-
+    setup = AnimationSetup(TRAJECTORY, global_config, "../data/actors_config.json")
     visualizer, animator, animation_config = setup.setup()
     current_t = setup.get_current_t_dict()
 
     visualizer.show()
 
+    # Главный цикл
     loop = AnimationLoop(visualizer, current_t)
     loop.run()
 

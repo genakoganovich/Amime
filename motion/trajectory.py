@@ -76,7 +76,6 @@ def interpolate_orientation_by_length(cum_lengths, directions, s):
     directions: (N,3) направления (из interpolate_orientation)
     s: длина вдоль траектории
     """
-
     if s <= 0:
         return directions[0]
 
@@ -84,11 +83,7 @@ def interpolate_orientation_by_length(cum_lengths, directions, s):
         return directions[-1]
 
     idx = np.searchsorted(cum_lengths, s) - 1
-    idx = np.clip(idx, 0, len(directions) - 2)
+    idx = np.clip(idx, 0, len(directions) - 1)
 
-    # параметр внутри сегмента
-    t = (s - cum_lengths[idx]) / (cum_lengths[idx + 1] - cum_lengths[idx])
-
-    # 🔥 ВОТ ГЛАВНОЕ ОТЛИЧИЕ
-    d = (1 - t) * directions[idx] + t * directions[idx + 1]
-    return d / np.linalg.norm(d)
+    # Просто возвращаем направление текущего сегмента БЕЗ интерполяции
+    return directions[idx]
