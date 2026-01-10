@@ -12,16 +12,9 @@ from motion.mesh_factory import MeshFactory
 from motion.actor_configuration import DefaultActorConfiguration
 
 
-class CurrentT:
-    """Хранилище текущего времени"""
-
-    def __init__(self):
-        self.value = 0.0
-
-
 def main():
-    # Создаем локально
-    current_t = CurrentT()
+    # Простой словарь вместо класса
+    current_state = {"t": 0.0}
 
     animator = TrajectoryAnimator(TRAJECTORY)
 
@@ -41,6 +34,7 @@ def main():
     for actor_name, actor_cfg in actor_config.get_all_actors().items():
         visualizer.add_actor(actor_cfg)
 
+
     # ========================================
     # РЕГИСТРАЦИЯ ПРОВАЙДЕРОВ СОСТОЯНИЯ
     # ========================================
@@ -49,32 +43,32 @@ def main():
     visualizer.register_state_provider(
         "method_1_sphere",
         lambda: ActorState(
-            position=animator.get_state_by_parameter(current_t.value)["position"],
-            yaw=animator.get_state_by_parameter(current_t.value)["yaw"]
+            position=animator.get_state_by_parameter(current_state["t"])["position"],
+            yaw=animator.get_state_by_parameter(current_state["t"])["yaw"]
         )
     )
 
     visualizer.register_state_provider(
         "method_1_arrow",
         lambda: ActorState(
-            position=animator.get_state_by_parameter(current_t.value)["position"],
-            yaw=animator.get_state_by_parameter(current_t.value)["yaw"]
+            position=animator.get_state_by_parameter(current_state["t"])["position"],
+            yaw=animator.get_state_by_parameter(current_state["t"])["yaw"]
         )
     )
 
     visualizer.register_state_provider(
         "method_2_sphere",
         lambda: ActorState(
-            position=animator.get_state_by_length(current_t.value)["position"],
-            yaw=animator.get_state_by_length(current_t.value)["yaw"]
+            position=animator.get_state_by_length(current_state["t"])["position"],
+            yaw=animator.get_state_by_length(current_state["t"])["yaw"]
         )
     )
 
     visualizer.register_state_provider(
         "method_2_arrow",
         lambda: ActorState(
-            position=animator.get_state_by_length(current_t.value)["position"],
-            yaw=animator.get_state_by_length(current_t.value)["yaw"]
+            position=animator.get_state_by_length(current_state["t"])["position"],
+            yaw=animator.get_state_by_length(current_state["t"])["yaw"]
         )
     )
 
@@ -86,7 +80,7 @@ def main():
     try:
         while True:
             for i in range(STEPS):
-                current_t.value = i / (STEPS - 1)
+                current_state["t"] = i / (STEPS - 1)
                 visualizer.update_all_actors()
                 visualizer.update()
                 time.sleep(FRAME_DELAY)
