@@ -1,0 +1,8 @@
+{
+  "actors": [
+    {"actor": "sphere", "color": "red", "interpolation_type": "parameter"},
+    {"actor": "arrow", "color": "red", "interpolation_type": "parameter"},
+    {"actor": "sphere", "color": "cyan", "interpolation_type": "length"},
+    {"actor": "arrow", "color": "cyan", "interpolation_type": "length"}
+  ]
+}

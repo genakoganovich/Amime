@@ -1,0 +1,5 @@
+actor	color	interpolation_type
+sphere	red	parameter
+arrow	red	parameter
+sphere	cyan	length
+arrow	cyan	length

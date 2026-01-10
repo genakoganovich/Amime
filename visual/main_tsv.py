@@ -9,7 +9,7 @@ from motion.constants import (
 from motion.animation_math import TrajectoryAnimator
 from motion.visualization import TrajectoryVisualizer, ActorState
 from motion.mesh_factory import MeshFactory
-from motion.actor_configuration import ActorConfigurationBuilder
+from motion.actor_loader import ActorLoader
 
 
 def main():
@@ -22,17 +22,13 @@ def main():
     visualizer = TrajectoryVisualizer(TRAJECTORY, global_config, mesh_factory)
 
     # ========================================
-    # КОНФИГУРАЦИЯ АКТОРОВ
+    # ЗАГРУЗКА КОНФИГУРАЦИИ ИЗ ФАЙЛА
     # ========================================
 
-    actor_config = ActorConfigurationBuilder(global_config)
-
-    # Добавляем как хочешь, в любом порядке
-    actor_config.add_sphere("method_1_sphere", color="red")
-    actor_config.add_arrow("method_1_arrow", color="red")
-
-    actor_config.add_sphere("method_2_sphere", color="cyan")
-    actor_config.add_arrow("method_2_arrow", color="cyan")
+    actor_config, animation_config = ActorLoader.load_from_csv(
+        "actors_config.tsv",
+        global_config
+    )
 
     # ========================================
     # ДОБАВЛЯЕМ АКТОРОВ НА СЦЕНУ
@@ -42,27 +38,19 @@ def main():
         def provider():
             if method == "parameter":
                 state = animator.get_state_by_parameter(current_t["value"])
-            else:
+            else:  # length
                 state = animator.get_state_by_length(current_t["value"])
 
             return ActorState(
-                position=state["position"],
+                position=list(state["position"]),
                 yaw=state["yaw"]
             )
 
         return provider
 
-    # Конфигурация поведения
-    animation_config = {
-        "method_1_sphere": "parameter",
-        "method_1_arrow": "parameter",
-        "method_2_sphere": "length",
-        "method_2_arrow": "length",
-    }
-
     # Добавляем на сцену
     for actor_name, actor in actor_config.get_all_actors().items():
-        method = animation_config.get(actor_name, "parameter")
+        method = animation_config[actor_name]
 
         visualizer.add_actor_with_provider(
             actor_name,
