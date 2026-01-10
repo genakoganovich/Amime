@@ -1,5 +1,4 @@
 import time
-from dataclasses import dataclass
 from motion.constants import (
     TRAJECTORY,
     ARROW_SCALE,
@@ -10,13 +9,8 @@ from motion.constants import (
 from motion.animation_math import TrajectoryAnimator
 from motion.visualization import TrajectoryVisualizer, ActorState
 from motion.mesh_factory import MeshFactory
-from motion.actor_configuration import DefaultActorConfiguration
+from motion.actor_configuration import ActorConfigurationBuilder
 
-@dataclass
-class ActorAnimationConfig:
-    """Конфиг актора для анимации"""
-    actor_name: str
-    method: str  # "parameter" или "length"
 
 def main():
     current_t = {"value": 0.0}
@@ -30,17 +24,20 @@ def main():
     # ========================================
     # КОНФИГУРАЦИЯ АКТОРОВ
     # ========================================
-    actor_config = DefaultActorConfiguration(global_config)
 
-    # Конфигурация анимации
-    animation_configs = {
-        "method_1": "parameter",
-        "method_2": "length",
-    }
+    actor_config = ActorConfigurationBuilder(global_config)
+
+    # Добавляем как хочешь, в любом порядке
+    actor_config.add_sphere("method_1_sphere", color="red")
+    actor_config.add_arrow("method_1_arrow", color="red")
+
+    actor_config.add_sphere("method_2_sphere", color="cyan")
+    actor_config.add_arrow("method_2_arrow", color="cyan")
 
     # ========================================
-    # Создание провайдеров
+    # ДОБАВЛЯЕМ АКТОРОВ НА СЦЕНУ
     # ========================================
+
     def make_provider(method):
         def provider():
             if method == "parameter":
@@ -55,11 +52,17 @@ def main():
 
         return provider
 
-    # ========================================
-    # Добавляем акторов со своими провайдерами
-    # ========================================
+    # Конфигурация поведения
+    animation_config = {
+        "method_1_sphere": "parameter",
+        "method_1_arrow": "parameter",
+        "method_2_sphere": "length",
+        "method_2_arrow": "length",
+    }
+
+    # Добавляем на сцену
     for actor_name, actor in actor_config.get_all_actors().items():
-        method = animation_configs[actor_name]
+        method = animation_config.get(actor_name, "parameter")
 
         visualizer.add_actor_with_provider(
             actor_name,
@@ -68,6 +71,10 @@ def main():
         )
 
     visualizer.show()
+
+    # ========================================
+    # ГЛАВНЫЙ ЦИКЛ АНИМАЦИИ
+    # ========================================
 
     try:
         while True:

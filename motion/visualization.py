@@ -1,5 +1,7 @@
 import pyvista as pv
+import numpy as np
 from dataclasses import dataclass
+from typing import Union, Tuple
 from typing import Dict, Any, Callable, List
 from motion.mesh_factory import MeshFactory
 
@@ -22,9 +24,14 @@ class ActorConfig:
 
 @dataclass
 class ActorState:
-    """Состояние актора"""
-    position: tuple
+    """Состояние актора (позиция + ориентация)"""
+    position: Union[list, tuple, np.ndarray]
     yaw: float
+
+    def __post_init__(self):
+        # Конвертируем position в list для PyVista
+        if isinstance(self.position, (tuple, np.ndarray)):
+            self.position = list(self.position)
 
 @dataclass
 class ActorVisuals:
@@ -64,15 +71,6 @@ class TrajectoryVisualizer:
             line_width=3
         )
 
-    def add_actor(self, actor_name: str, visual_configs: List[ActorConfig]):
-        """Добавить актора на сцену"""
-        for config in visual_configs:
-            mesh = self.mesh_factory.create(config.mesh_type, config.mesh_params)
-            visual = self.plotter.add_mesh(mesh, color=config.color)
-
-            self.visuals[config.name] = MeshActor(visual, config.color)
-
-
     def add_actor_with_provider(self, actor_name: str,
                                 visual_configs: List[ActorConfig],
                                 state_provider: Callable[[], ActorState]):
@@ -102,7 +100,7 @@ class TrajectoryVisualizer:
             # Обновляем все визуалы этого актора
             for visual_name in actor.visuals:
                 visual = self.visuals[visual_name].mesh
-                visual.SetPosition(state.position)
+                visual.SetPosition(state.position)  # <- теперь уже list
                 visual.SetOrientation(0, 0, state.yaw)
 
     def show(self):

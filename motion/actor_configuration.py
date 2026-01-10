@@ -7,7 +7,7 @@ from motion.visualization import ActorConfig
 class Actor:
     """Логический актор с его визуальным представлением"""
     name: str
-    visuals: List[ActorConfig]  # может быть несколько визуальных элементов
+    visuals: List[ActorConfig]
 
 
 class ActorConfigFactory:
@@ -61,55 +61,36 @@ class ActorConfigurationBuilder:
         self.actors[actor_name] = Actor(name=actor_name, visuals=visuals)
         return self
 
-    def add_actor_with_sphere_and_arrow(self, actor_name: str, color: str,
-                                        **kwargs) -> "ActorConfigurationBuilder":
+    def add_sphere(self, actor_name: str, color: str, **kwargs) -> "ActorConfigurationBuilder":
         """
-        Добавить актора со сферой и стрелкой
+        Добавить актора только со сферой
 
         Args:
             actor_name: имя актора
             color: цвет
-            **kwargs: доп. параметры
+            **kwargs: доп. параметры (radius, etc.)
 
         Returns:
             self для chaining
         """
         sphere = self.factory.create_sphere_config(actor_name, color, **kwargs)
-        arrow = self.factory.create_arrow_config(actor_name, color, **kwargs)
-        return self.add_actor(actor_name, [sphere, arrow])
-
-    def add_actor_with_sphere_only(self, actor_name: str, color: str,
-                                   **kwargs) -> "ActorConfigurationBuilder":
-        """Добавить актора только со сферой"""
-        sphere = self.factory.create_sphere_config(actor_name, color, **kwargs)
         return self.add_actor(actor_name, [sphere])
 
-    def add_actor_with_arrow_only(self, actor_name: str, color: str,
-                                  **kwargs) -> "ActorConfigurationBuilder":
-        """Добавить актора только со стрелкой"""
+    def add_arrow(self, actor_name: str, color: str, **kwargs) -> "ActorConfigurationBuilder":
+        """
+        Добавить актора только со стрелкой
+
+        Args:
+            actor_name: имя актора
+            color: цвет
+            **kwargs: доп. параметры (scale, etc.)
+
+        Returns:
+            self для chaining
+        """
         arrow = self.factory.create_arrow_config(actor_name, color, **kwargs)
         return self.add_actor(actor_name, [arrow])
 
     def get_all_actors(self) -> Dict[str, Actor]:
         """Получить всех акторов"""
         return self.actors
-
-    def get_actor(self, actor_name: str) -> Actor:
-        """Получить одного актора"""
-        return self.actors[actor_name]
-
-
-class DefaultActorConfiguration(ActorConfigurationBuilder):
-    """Дефолтная конфигурация - два актора"""
-
-    def __init__(self, global_params: Dict):
-        super().__init__(global_params)
-        self._setup_default_config()
-
-    def _setup_default_config(self):
-        """Настроить дефолтную конфигурацию"""
-        # Актор 1: интерполяция по параметру (со сферой и стрелкой)
-        self.add_actor_with_sphere_and_arrow("method_1", color="red")
-
-        # Актор 2: интерполяция по длине дуги (со сферой и стрелкой)
-        self.add_actor_with_sphere_and_arrow("method_2", color="cyan")
