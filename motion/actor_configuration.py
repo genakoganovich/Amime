@@ -63,33 +63,6 @@ class ActorConfigFactory:
             }
         )
 
-    def create_composite(self, name_prefix: str, color: str,
-                         with_sphere: bool = True,
-                         with_arrow: bool = True,
-                         **kwargs) -> List[ActorConfig]:
-        """
-        Создать комбинированный набор (сфера + стрелка)
-
-        Args:
-            name_prefix: префикс для имен объектов
-            color: цвет
-            with_sphere: включить сферу
-            with_arrow: включить стрелку
-            **kwargs: доп. параметры для sphere и arrow
-
-        Returns:
-            список ActorConfig
-        """
-        actors = []
-
-        if with_sphere:
-            actors.append(self.create_sphere(f"{name_prefix}_sphere", color, **kwargs))
-
-        if with_arrow:
-            actors.append(self.create_arrow(f"{name_prefix}_arrow", color, **kwargs))
-
-        return actors
-
 
 class ActorConfigurationBuilder:
     """Построитель конфигурации объектов на сцене"""
@@ -100,6 +73,7 @@ class ActorConfigurationBuilder:
             global_params: глобальные параметры (SPHERE_RADIUS, ARROW_SCALE и т.д.)
         """
         self.global_params = global_params
+        self.factory = ActorConfigFactory(global_params)
         self.groups: Dict[str, ActorGroupConfig] = {}
 
     def add_group(self, group_name: str, actors: List[ActorConfig]) -> "ActorConfigurationBuilder":
@@ -116,6 +90,57 @@ class ActorConfigurationBuilder:
         self.groups[group_name] = ActorGroupConfig(name=group_name, actors=actors)
         return self
 
+    def add_sphere_group(self, group_name: str, actor_name: str,
+                         color: str, **kwargs) -> "ActorConfigurationBuilder":
+        """
+        Добавить группу с одной сферой
+
+        Args:
+            group_name: название группы
+            actor_name: имя объекта
+            color: цвет
+            **kwargs: доп. параметры для сферы
+
+        Returns:
+            self для chaining
+        """
+        actor = self.factory.create_sphere(actor_name, color, **kwargs)
+        return self.add_group(group_name, [actor])
+
+    def add_arrow_group(self, group_name: str, actor_name: str,
+                        color: str, **kwargs) -> "ActorConfigurationBuilder":
+        """
+        Добавить группу со стрелкой
+
+        Args:
+            group_name: название группы
+            actor_name: имя объекта
+            color: цвет
+            **kwargs: доп. параметры для стрелки
+
+        Returns:
+            self для chaining
+        """
+        actor = self.factory.create_arrow(actor_name, color, **kwargs)
+        return self.add_group(group_name, [actor])
+
+    def add_sphere_and_arrow_group(self, group_name: str,
+                                   color: str, **kwargs) -> "ActorConfigurationBuilder":
+        """
+        Добавить группу со сферой и стрелкой
+
+        Args:
+            group_name: название группы
+            color: цвет
+            **kwargs: доп. параметры
+
+        Returns:
+            self для chaining
+        """
+        sphere = self.factory.create_sphere(f"{group_name}_sphere", color, **kwargs)
+        arrow = self.factory.create_arrow(f"{group_name}_arrow", color, **kwargs)
+        return self.add_group(group_name, [sphere, arrow])
+
     def get_all_groups(self) -> Dict[str, ActorGroupConfig]:
         """Получить все группы"""
         return self.groups
@@ -130,21 +155,12 @@ class DefaultActorConfiguration(ActorConfigurationBuilder):
 
     def __init__(self, global_params: Dict):
         super().__init__(global_params)
-        self.factory = ActorConfigFactory(global_params)
         self._setup_default_config()
 
     def _setup_default_config(self):
         """Настроить дефолтную конфигурацию"""
-        # Метод 1: интерполяция по параметру
-        method_1_actors = self.factory.create_composite(
-            name_prefix="method_1",
-            color="red"
-        )
-        self.add_group("method_1", method_1_actors)
+        # Метод 1: интерполяция по параметру (сфера + стрелка)
+        self.add_sphere_and_arrow_group("method_1", color="red")
 
-        # Метод 2: интерполяция по длине дуги
-        method_2_actors = self.factory.create_composite(
-            name_prefix="method_2",
-            color="cyan"
-        )
-        self.add_group("method_2", method_2_actors)
+        # Метод 2: интерполяция по длине дуги (сфера + стрелка)
+        self.add_sphere_and_arrow_group("method_2", color="cyan")
