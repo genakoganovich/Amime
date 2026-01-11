@@ -2,6 +2,12 @@
   "actors": [
     {
       "actor": "arrow",
+      "color": "red",
+      "interpolation_type": "index",
+      "orientation_type": "index"
+    },
+    {
+      "actor": "arrow",
       "color": "cyan",
       "interpolation_type": "length",
       "orientation_type": "tangent_velocity"

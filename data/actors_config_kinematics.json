@@ -1,6 +1,6 @@
 {
   "actors": [
     {"actor": "arrow", "color": "red", "interpolation_type": "parameter"},
-    {"actor": "arrow", "color": "cyan", "interpolation_type": "length"}
+     {"actor": "arrow", "color": "cyan", "interpolation_type": "length"}
   ]
 }

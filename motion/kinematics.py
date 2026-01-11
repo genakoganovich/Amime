@@ -130,19 +130,59 @@ def accel_decel(total_length, t, T, v_max=1.0, a=1.0):
 def tangent_velocity(points, s, ds=1e-4):
     """
     dP/ds — производная позиции по длине пути.
+    Безопасная версия с обработкой границ.
     """
-    p1 = interpolate_position_by_length(points, s)
-    p2 = interpolate_position_by_length(points, s + ds)
-    return (p2 - p1) / ds
+    total_len = polyline_length(points)
+
+    # Ограничиваем s в пределы [0, total_len]
+    s = np.clip(s, 0, total_len)
+
+    # Выбираем направление для вычисления разности
+    if s + ds > total_len:
+        # В конце траектории — вычисляем в обратном направлении
+        s1 = max(0, s - ds)
+        s2 = s
+    else:
+        # В середине — вычисляем в прямом направлении
+        s1 = s
+        s2 = min(s + ds, total_len)
+
+    p1 = interpolate_position_by_length(points, s1)
+    p2 = interpolate_position_by_length(points, s2)
+
+    ds_actual = s2 - s1
+
+    # Если не можем сдвинуться, вернуть нулевой вектор
+    if ds_actual < 1e-10:
+        return np.array([0.0, 0.0, 0.0])
+
+    return (p2 - p1) / ds_actual
 
 
 def tangent_acceleration(points, s, ds=1e-4):
     """
     d²P/ds² — вторая производная по длине пути.
+    Безопасная версия.
     """
-    v1 = tangent_velocity(points, s, ds)
-    v2 = tangent_velocity(points, s + ds, ds)
-    return (v2 - v1) / ds
+    total_len = polyline_length(points)
+    s = np.clip(s, 0, total_len)
+
+    # Вычисляем скорость в двух точках
+    if s + ds > total_len:
+        s1 = max(0, s - ds)
+        s2 = s
+    else:
+        s1 = s
+        s2 = min(s + ds, total_len)
+
+    v1 = tangent_velocity(points, s1, ds)
+    v2 = tangent_velocity(points, s2, ds)
+
+    ds_actual = s2 - s1
+    if ds_actual < 1e-10:
+        return np.array([0.0, 0.0, 0.0])
+
+    return (v2 - v1) / ds_actual
 
 
 # ============================================================
