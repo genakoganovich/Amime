@@ -2,11 +2,8 @@ import numpy as np
 from motion.trajectory import (
     cumulative_lengths,
     polyline_length,
-    interpolate_position,
-    interpolate_position_by_length,
-    interpolate_orientation,
-    interpolate_orientation_by_length,
 )
+from motion.interpolation_strategies import StrategyRegistry
 
 
 class TrajectoryAnimator:
@@ -16,47 +13,35 @@ class TrajectoryAnimator:
         self.trajectory = trajectory
         self.cum_len = cumulative_lengths(trajectory)
         self.total_len = polyline_length(trajectory)
+
+        # Импортируем для использования в стратегиях
+        from motion.trajectory import interpolate_orientation
         self.directions_seg = interpolate_orientation(trajectory)
 
     def get_state(self, t: float, interpolation_type: str, orientation_type: str) -> dict:
         """
-        Получить состояние с гибким выбором методов интерполяции
-
         Args:
             t: параметр времени [0, 1]
-            interpolation_type: "index" или "length"
-            orientation_type: "index" или "length"
+            interpolation_type: название стратегии позиции
+            orientation_type: название стратегии ориентации
         """
-        # Выбираем метод интерполяции позиции
-        if interpolation_type == "index":
-            pos = interpolate_position(
-                self.trajectory,
-                t * (len(self.trajectory) - 1)
-            )
-        elif interpolation_type == "length":
-            pos = interpolate_position_by_length(
-                self.trajectory,
-                t * self.total_len
-            )
-        else:
-            raise ValueError(f"Unknown interpolation_type: {interpolation_type}")
+        # Получаем стратегии из реестра
+        pos_strategy = StrategyRegistry.get_position_strategy(interpolation_type)
+        orient_strategy = StrategyRegistry.get_orientation_strategy(orientation_type)
 
-        # Выбираем метод интерполяции ориентации
-        if orientation_type == "index":
-            seg_idx = int(np.clip(
-                int(t * (len(self.trajectory) - 1)),
-                0,
-                len(self.directions_seg) - 1
-            ))
-            direction = self.directions_seg[seg_idx]
-        elif orientation_type == "length":
-            direction = interpolate_orientation_by_length(
-                self.cum_len,
-                self.directions_seg,
-                t * self.total_len
-            )
-        else:
-            raise ValueError(f"Unknown orientation_type: {orientation_type}")
+        # Вычисляем позицию
+        pos = pos_strategy(self.trajectory, t)
+
+        # Вычисляем направление
+        # Передаём дополнительные параметры, которые могут понадобиться стратегии
+        direction = orient_strategy(
+            self.trajectory,
+            t,
+            directions_seg=self.directions_seg,
+            cum_len=self.cum_len,
+            total_len=self.total_len
+        )
+        direction = direction / np.linalg.norm(direction)
 
         yaw = np.degrees(np.arctan2(direction[1], direction[0]))
 

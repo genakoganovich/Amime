@@ -10,7 +10,7 @@
       "actor": "arrow",
       "color": "cyan",
       "interpolation_type": "length",
-      "orientation_type": "length"
+      "orientation_type": "tangent_velocity"
     }
   ]
 }
