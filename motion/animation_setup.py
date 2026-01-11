@@ -11,13 +11,6 @@ class AnimationSetup:
 
     def __init__(self, trajectory, global_config: Dict, config_file: str,
                  use_kinematics: bool = False):
-        """
-        Args:
-            trajectory: траектория
-            global_config: глобальные параметры
-            config_file: путь к JSON файлу с конфигурацией акторов
-            use_kinematics: использовать визуализацию кинематических векторов
-        """
         self.trajectory = trajectory
         self.global_config = global_config
         self.config_file = config_file
@@ -29,16 +22,9 @@ class AnimationSetup:
         self.animation_config = None
 
     def setup(self) -> Tuple[TrajectoryVisualizer, TrajectoryAnimator, Dict]:
-        """
-        Полная инициализация
-
-        Returns:
-            (visualizer, animator, animation_config)
-        """
-        # Инициализируем animator
+        """Полная инициализация"""
         self.animator = TrajectoryAnimator(self.trajectory)
 
-        # Создаем visualizer
         mesh_factory = MeshFactory()
         self.visualizer = TrajectoryVisualizer(
             self.trajectory,
@@ -46,14 +32,10 @@ class AnimationSetup:
             mesh_factory
         )
 
-        # Инициализируем kinematics визуализацию если нужна
         if self.use_kinematics:
             self.kinematics_viz = KinematicsVisualizer(self.trajectory)
 
-        # Загружаем конфигурацию из файла
         self._load_actors_config()
-
-        # Добавляем акторов на сцену
         self._add_actors_to_scene()
 
         return self.visualizer, self.animator, self.animation_config
@@ -69,17 +51,21 @@ class AnimationSetup:
     def _add_actors_to_scene(self):
         """Добавить акторов на сцену с провайдерами состояния"""
 
-        def make_provider(method):
-            """Создать провайдер для конкретного метода"""
+        def make_provider(actor_row):
+            """Создать провайдер для актора с его конфигурацией"""
 
             def provider():
-                # Получаем позицию в зависимости от метода
-                if method == "parameter":
-                    state = self.animator.get_state_by_parameter(self._current_t["value"])
-                else:  # length
-                    state = self.animator.get_state_by_length(self._current_t["value"])
+                # Получаем типы интерполяции из конфигурации
+                interp_type = actor_row.interpolation_type
+                orient_type = actor_row.orientation_type
 
-                # Используем направление из state (оно уже вычислено в animator)
+                # Используем гибкий метод get_state
+                state = self.animator.get_state(
+                    self._current_t["value"],
+                    interp_type,
+                    orient_type
+                )
+
                 return ActorState(
                     position=list(state["position"]),
                     yaw=state["yaw"]
@@ -89,8 +75,8 @@ class AnimationSetup:
 
         # Добавляем каждого актора
         for actor_name, actor in self.actor_config.get_all_actors().items():
-            method = self.animation_config[actor_name]
-            provider = make_provider(method)
+            actor_row = self.animation_config[actor_name]
+            provider = make_provider(actor_row)
 
             self.visualizer.add_actor_with_provider(
                 actor_name,

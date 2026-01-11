@@ -1,20 +1,39 @@
 import csv
 import json
 from typing import List, Dict
-from dataclasses import dataclass
+from motion.actor_config_schema import ActorConfigRow
 from motion.actor_configuration import ActorConfigurationBuilder
 
 
-@dataclass
-class ActorConfigRow:
-    """Строка конфигурации"""
-    actor_type: str
-    color: str
-    interpolation_type: str
-
-
 class ActorLoader:
-    """Загрузчик конфигурации акторов"""
+    """Загрузчик конфигурации акторов с поддержкой расширяемых параметров"""
+
+    # Определяем обязательные поля
+    REQUIRED_FIELDS = {'actor', 'color', 'interpolation_type', 'orientation_type'}
+
+    @staticmethod
+    def load_from_json(filepath: str, global_params: Dict) -> tuple:
+        """Загрузить из JSON"""
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        rows = []
+        for item in data['actors']:
+            # Проверяем обязательные поля
+            ActorLoader._validate_item(item)
+
+            # Извлекаем обязательные поля
+            row = ActorConfigRow(
+                actor_type=item['actor'],
+                color=item['color'],
+                interpolation_type=item['interpolation_type'],
+                orientation_type=item['orientation_type'],
+                extra={k: v for k, v in item.items()
+                       if k not in ActorLoader.REQUIRED_FIELDS}
+            )
+            rows.append(row)
+
+        return ActorLoader._build_config(rows, global_params)
 
     @staticmethod
     def load_from_csv(filepath: str, global_params: Dict) -> tuple:
@@ -30,25 +49,33 @@ class ActorLoader:
         with open(filepath, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter='\t')
 
-            # Выводим заголовки для отладки
             if reader.fieldnames:
                 print(f"Найденные колонки: {reader.fieldnames}")
 
             for row in reader:
                 try:
-                    # Пытаемся найти нужные колонки (с разными вариантами названий)
+                    # Получаем обязательные поля
                     actor_type = ActorLoader._get_value(row, ['actor', 'actor_type', 'type'])
                     color = ActorLoader._get_value(row, ['color', 'Color'])
-                    interp_type = ActorLoader._get_value(row, ['interpolation_type', 'interpolation', 'method', 'type'])
+                    interp_type = ActorLoader._get_value(row, ['interpolation_type', 'interpolation', 'method'])
+                    orient_type = ActorLoader._get_value(row, ['orientation_type', 'orientation'])
 
-                    if not all([actor_type, color, interp_type]):
+                    if not all([actor_type, color, interp_type, orient_type]):
                         print(f"Пропускаем строку (неполные данные): {row}")
                         continue
+
+                    # Остальные параметры идут в extra
+                    extra = {k: v for k, v in row.items()
+                             if k not in ['actor', 'actor_type', 'type', 'color', 'Color',
+                                          'interpolation_type', 'interpolation', 'method',
+                                          'orientation_type', 'orientation']}
 
                     rows.append(ActorConfigRow(
                         actor_type=actor_type.strip(),
                         color=color.strip(),
-                        interpolation_type=interp_type.strip()
+                        interpolation_type=interp_type.strip(),
+                        orientation_type=orient_type.strip(),
+                        extra=extra
                     ))
                 except Exception as e:
                     print(f"Ошибка при чтении строки: {e}")
@@ -63,26 +90,16 @@ class ActorLoader:
     def _get_value(row: dict, possible_keys: List[str]) -> str:
         """Получить значение из словаря по одному из возможных ключей"""
         for key in possible_keys:
-            if key in row:
+            if key in row and row[key]:
                 return row[key]
         return None
 
     @staticmethod
-    def load_from_json(filepath: str, global_params: Dict) -> tuple:
-        """Загрузить из JSON"""
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        rows = [
-            ActorConfigRow(
-                actor_type=item['actor'],
-                color=item['color'],
-                interpolation_type=item['interpolation_type']
-            )
-            for item in data['actors']
-        ]
-
-        return ActorLoader._build_config(rows, global_params)
+    def _validate_item(item: Dict) -> None:
+        """Проверить наличие обязательных полей"""
+        missing = ActorLoader.REQUIRED_FIELDS - set(item.keys())
+        if missing:
+            raise ValueError(f"Отсутствуют обязательные поля: {missing}")
 
     @staticmethod
     def _build_config(rows: List[ActorConfigRow], global_params: Dict) -> tuple:
@@ -100,6 +117,7 @@ class ActorLoader:
             else:
                 raise ValueError(f"Unknown actor type: {row.actor_type}")
 
-            animation_config[actor_name] = row.interpolation_type
+            # Сохраняем всю конфигурацию актора
+            animation_config[actor_name] = row
 
         return actor_config, animation_config

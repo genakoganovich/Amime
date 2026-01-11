@@ -14,15 +14,14 @@ def main():
         "arrow_scale": ARROW_SCALE,
     }
 
-    # Получить путь к корню проекта относительно этого файла
     project_root = Path(__file__).parent.parent
-    config_path = project_root / "data" / "actors_config_kinematics.json"
+    config_path = project_root / "data" / "actors_config_flexible.json"
 
     setup = AnimationSetup(
         TRAJECTORY,
         global_config,
         str(config_path),
-        use_kinematics=False  # ← Оставляем False
+        use_kinematics=False
     )
 
     visualizer, animator, animation_config = setup.setup()
