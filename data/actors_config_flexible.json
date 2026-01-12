@@ -4,7 +4,7 @@
       "actor": "arrow",
       "color": "cyan",
       "interpolation_type": "length",
-      "orientation_type": "tangent_velocity"
+      "orientation_type": "frenet_normal_length"
     }
   ]
 }

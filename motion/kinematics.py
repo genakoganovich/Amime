@@ -207,3 +207,68 @@ def spline_position(splines, t):
     """
     sx, sy, sz = splines
     return np.array([sx(t), sy(t), sz(t)])
+
+
+def normal_at_length(points, s, ds=1e-4):
+    """
+    Получить вектор нормали N в точке s по длине дуги.
+    Использует Frenet frame.
+    """
+    total_len = polyline_length(points)
+    s = np.clip(s, 0, total_len)
+
+    # Получаем весь Frenet frame
+    T, N, B = frenet_frame(points)
+
+    # Нужно найти индекс, соответствующий длине s
+    cum_len = cumulative_lengths(points)
+    idx = np.searchsorted(cum_len, s)
+    idx = np.clip(idx, 0, len(N) - 1)
+
+    return N[idx]
+
+
+def normal_by_index(points, t):
+    """
+    Получить вектор нормали N в точке с индексом t.
+
+    Args:
+        points: np.ndarray, shape (N, 3)
+        t: float, индекс вдоль траектории (0..N-1)
+
+    Returns:
+        np.ndarray, shape (3,) — нормаль в точке t
+    """
+    if t <= 0:
+        T, N, B = frenet_frame(points)
+        return N[0]
+
+    if t >= len(points) - 1:
+        T, N, B = frenet_frame(points)
+        return N[-1]
+
+    # Находим индекс с интерполяцией
+    i = int(np.floor(t))
+    frac = t - i
+
+    # Вычисляем Frenet frame один раз
+    T, N, B = frenet_frame(points)
+
+    # Интерполируем нормаль между соседними точками
+    return N[i] + (N[i + 1] - N[i]) * frac
+
+
+def normal_by_index_discrete(points, t):
+    """
+    Получить вектор нормали N в точке с индексом t (дискретно).
+
+    Args:
+        points: np.ndarray, shape (N, 3)
+        t: float, индекс вдоль траектории (0..N-1)
+
+    Returns:
+        np.ndarray, shape (3,) — нормаль в ближайшей точке
+    """
+    idx = int(np.clip(t, 0, len(points) - 1))
+    T, N, B = frenet_frame(points)
+    return N[idx]

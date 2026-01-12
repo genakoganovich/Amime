@@ -12,7 +12,12 @@ from motion.trajectory import (
     cumulative_lengths,
     polyline_length,
 )
-from motion.kinematics import tangent_velocity
+
+from motion.kinematics import (
+    tangent_velocity,
+    normal_at_length,
+    normal_by_index
+)
 
 
 class PositionStrategies:
@@ -65,6 +70,34 @@ class OrientationStrategies:
         direction = tangent_velocity(trajectory, s)
         return direction / np.linalg.norm(direction)
 
+
+
+    @staticmethod
+    def frenet_normal_length(trajectory, t, cum_len=None, total_len=None, **kwargs):
+        """Вектор нормали из Frenet frame"""
+        total_len = total_len or polyline_length(trajectory)
+        s = t * total_len
+
+        direction = normal_at_length(trajectory, s)
+
+        norm = np.linalg.norm(direction)
+        if norm < 1e-10:
+            return np.array([0.0, 0.0, 1.0])
+
+        return direction / norm
+
+    @staticmethod
+    def frenet_normal_index(trajectory, t, **kwargs):
+        """Вектор нормали из Frenet frame по индексу"""
+        t_idx = t * (len(trajectory) - 1)
+        direction = normal_by_index(trajectory, t_idx)
+
+        norm = np.linalg.norm(direction)
+        if norm < 1e-10:
+            return np.array([0.0, 0.0, 1.0])
+
+        return direction / norm
+
     @staticmethod
     def my_custom_function(trajectory, t, **kwargs):  # ← Уже есть
         """Пример вашей новой функции"""
@@ -83,6 +116,8 @@ class StrategyRegistry:
         'index': OrientationStrategies.index,
         'length': OrientationStrategies.length,
         'tangent_velocity': OrientationStrategies.tangent_velocity,
+        'frenet_normal_length': OrientationStrategies.frenet_normal_length,
+        'frenet_normal_index': OrientationStrategies.frenet_normal_index,
         'my_custom_function': OrientationStrategies.my_custom_function,
     }
 
